@@ -99,7 +99,6 @@ instance Insert x ys => InsertCmp 'GT x y ys where
   type InsertCmp' 'GT x y ys = y : Insert' x ys
   insertCmp _ x y ys = y :< insert x ys
 
-
 -- | Unwrap all the Tagged items in an HList
 class UnTag t ut | t -> ut where
   unTag :: HList t -> HList ut
@@ -110,6 +109,17 @@ instance UnTag '[] '[] where
 instance UnTag ts uts => UnTag (Tagged n a : ts) (a : uts) where
   unTag (Tagged a :< ts) = a :< unTag ts
 
+class HListMerge (as :: [*]) (bs :: [*]) where
+  type Concat as bs :: [*]
+  mergeHList :: HList as -> HList bs -> HList (Concat as bs)
+
+instance HListMerge '[] bs where
+  type Concat '[] bs = bs
+  mergeHList _ bs = bs
+
+instance HListMerge as bs => HListMerge (a : as) bs where
+  type Concat (a : as) bs = a : Concat as bs
+  mergeHList (a :< as) bs = a :< mergeHList as bs
 
 -- | example
 as :: HList '[Tagged 3 String, Tagged 1 Int, Tagged 2 Bool]
@@ -117,3 +127,8 @@ as = Tagged "hello" :< Tagged 0 :< Tagged False :< HNil
 
 bs :: HList '[Int, Bool, String]
 bs = unTag . sort $ as
+
+ordered :: (Bool, Char, String, Int)
+ordered = let original1 = (Tagged "a" :: Tagged 3 String, Tagged False :: Tagged 1 Bool)
+              original2 = (Tagged 42 :: Tagged 4 Int, Tagged 'c' :: Tagged 2 Char)
+          in to . fromHList . unTag . sort $ mergeHList (toHList . from $ original1) (toHList . from $ original2)
